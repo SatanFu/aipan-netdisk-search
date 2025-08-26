@@ -1,11 +1,11 @@
-import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
-import { prisma, initializePrisma } from '@/lib/prisma-client';
-import { z } from 'zod';
+import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { prisma, initializePrisma } from "@/lib/prisma-client";
+import { z } from "zod";
 
 const categorySchema = z.object({
-  name: z.string().min(1, '分类名称不能为空'),
+  name: z.string().min(1, "分类名称不能为空"),
 });
 
 // GET /api/categories
@@ -32,53 +32,59 @@ export async function GET() {
               select: {
                 id: true,
                 name: true,
-              }
+              },
             },
             tags: {
               select: {
                 id: true,
                 name: true,
-              }
+              },
             },
             links: {
               select: {
                 id: true,
                 url: true,
                 platform: true,
-              }
-            },
-            ...(userId ? {
-              favorites: {
-                where: { userId },
-                select: { userId: true },
               },
-            } : {}),
-          }
-        }
+            },
+            ...(userId
+              ? {
+                  favorites: {
+                    where: { userId },
+                    select: { userId: true },
+                  },
+                }
+              : {}),
+          },
+        },
+        _count: {
+          select: {
+            resources: true,
+          },
+        },
       },
       orderBy: {
-        name: 'asc',
+        name: "asc",
       },
     });
 
     // Transform resources to include isFavorite flag
-    const transformedCategories = categories.map(category => ({
+    const transformedCategories = categories.map((category) => ({
       ...category,
-      resources: category.resources.map(resource => ({
+      resources: category.resources.map((resource) => ({
         ...resource,
-        isFavorite: 'favorites' in resource ? resource.favorites.length > 0 : false,
-      }))
+        isFavorite:
+          "favorites" in resource ? resource.favorites.length > 0 : false,
+      })),
     }));
 
     return NextResponse.json(transformedCategories);
   } catch (error) {
-    console.error('获取分类失败:', error);
+    console.error("获取分类失败:", error);
     // Return a more specific error message if available
-    const errorMessage = error instanceof Error ? error.message : '获取分类失败';
-    return NextResponse.json(
-      { error: errorMessage },
-      { status: 500 }
-    );
+    const errorMessage =
+      error instanceof Error ? error.message : "获取分类失败";
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
 
@@ -87,11 +93,8 @@ export async function POST(request: Request) {
   try {
     await initializePrisma();
     const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== 'admin') {
-      return NextResponse.json(
-        { error: '权限不足' },
-        { status: 403 }
-      );
+    if (!session || session.user.role !== "admin") {
+      return NextResponse.json({ error: "权限不足" }, { status: 403 });
     }
 
     const json = await request.json();
@@ -102,34 +105,28 @@ export async function POST(request: Request) {
     });
 
     if (existingCategory) {
-      return NextResponse.json(
-        { error: '分类已存在' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "分类已存在" }, { status: 400 });
     }
 
     const category = await prisma.category.create({
       data: validatedData,
       include: {
         _count: {
-          select: { resources: true }
-        }
+          select: { resources: true },
+        },
       },
     });
 
     return NextResponse.json(category);
   } catch (error) {
-    console.error('创建分类失败:', error);
+    console.error("创建分类失败:", error);
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: error.errors[0].message },
         { status: 400 }
       );
     }
-    return NextResponse.json(
-      { error: '创建分类失败' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "创建分类失败" }, { status: 500 });
   }
 }
 
@@ -138,11 +135,8 @@ export async function PATCH(request: Request) {
   try {
     await initializePrisma();
     const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== 'admin') {
-      return NextResponse.json(
-        { error: '权限不足' },
-        { status: 403 }
-      );
+    if (!session || session.user.role !== "admin") {
+      return NextResponse.json({ error: "权限不足" }, { status: 403 });
     }
 
     const json = await request.json();
@@ -154,10 +148,7 @@ export async function PATCH(request: Request) {
     });
 
     if (existingCategory && existingCategory.id !== id) {
-      return NextResponse.json(
-        { error: '分类已存在' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "分类已存在" }, { status: 400 });
     }
 
     const category = await prisma.category.update({
@@ -165,23 +156,20 @@ export async function PATCH(request: Request) {
       data: validatedData,
       include: {
         _count: {
-          select: { resources: true }
-        }
+          select: { resources: true },
+        },
       },
     });
 
     return NextResponse.json(category);
   } catch (error) {
-    console.error('更新分类失败:', error);
+    console.error("更新分类失败:", error);
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: error.errors[0].message },
         { status: 400 }
       );
     }
-    return NextResponse.json(
-      { error: '更新分类失败' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "更新分类失败" }, { status: 500 });
   }
 }
